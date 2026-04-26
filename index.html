@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ИНСТРУМЕНТЫ МР [ШРК]</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div>
+        <h1>ИНСТРУМЕНТЫ МР [ШРК]</h1>
+      </div>
+      <button class="nav-toggle" id="navToggle" type="button">Меню</button>
+    </div>
+
+    <div class="layout">
+      <aside class="column nav-col" id="navCol">
+        <h3 class="column-title">Навигация</h3>
+
+        <div class="accordion">
+          <div class="acc-item">
+            <button class="nav-btn active" type="button" data-form="permission" style="padding: 14px 16px; font-size: 15px; border: none; color: var(--text);">ВЫДАЧА РАЗРЕШЕНИЯ</button>
+          </div>
+          
+          <div class="acc-item">
+            <button class="nav-btn" type="button" data-form="entry" style="padding: 14px 16px; font-size: 15px; border: none; color: var(--text);">ВСТУПЛЕНИЕ</button>
+          </div>
+        </div>
+
+        <div style="margin-top: auto; padding: 20px 0;">
+          <p class="help" style="font-size: 11px; line-height: 1.6;">
+            Вся информация обновляется через таблицу.<br>
+            <b>Обновлено:</b> <span id="sheetDate">загрузка...</span><br><br>
+            <a href="https://docs.google.com/spreadsheets/d/1pYFwaxqqdMXEc5QEvPTD40YNNv1utG-a2dOptWUcAMA/edit" target="_blank" style="color: var(--accent); text-decoration: underline;">Перейти к таблице
+            </a>
+          </p>
+        </div>
+      </aside>
+
+      <section class="column input-col">
+        <h3 class="column-title" id="workAreaTitle">ВЫДАЧА РАЗРЕШЕНИЯ</h3>
+
+        <div id="form-permission" class="stack form-view">
+          <div class="card stack">
+            <div class="grid">
+              <div class="full">
+                <label for="permType">Вид разрешения</label>
+                <select id="permType">
+                  <option value="обычное" selected>Обычное разрешение на посещение</option>
+                  <option value="бессрочное">Бессрочное разрешение</option>
+                  <option value="отказ">Отказ в разрешении</option>
+                </select>
+              </div>
+
+              <div id="permTargetWrap" class="full">
+                <label for="permTargetId">ID Кому выдается</label>
+                <input id="permTargetId" type="text" placeholder="1234567">
+              </div>
+
+              <div id="permFactionWrap" class="full">
+                <label for="permFactionType">Тип фракции</label>
+                <select id="permFactionType">
+                  <option value="official" selected>Официальная фракция</option>
+                  <option value="autonomy">Автономия / Полуофициальная / Церковная</option>
+                  <option value="loner">Одиночка вне Церковной территории</option>
+                </select>
+              </div>
+
+              <div id="permGuarantorWrap" class="full">
+                <label for="permGuarantorId">ID Поручителя (если есть)</label>
+                <input id="permGuarantorId" type="text" placeholder="1234567">
+                <div id="permErrorMsg" class="hidden" style="font-size: 10px; color: #c0392b; margin-top: 5px;">
+                  <b>Одиночкам без поручителя разрешение не выдается!</b>
+                </div>
+              </div>
+
+              <div id="permDateWrap">
+                <label for="permStartDate">Дата выдачи</label>
+                <input id="permStartDate" type="text" placeholder="дд.мм.гг">
+              </div>
+              
+              <div id="permEndWrap">
+                <label for="permEndDate">Дата окончания</label>
+                <input id="permEndDate" type="text" readonly placeholder=" ">
+              </div>
+              
+              <div id="permReReqWrap" class="full">
+                <label for="permReReqDate">Повторный запрос</label>
+                <input id="permReReqDate" type="text" readonly placeholder=" ">
+              </div>
+
+              <div class="hidden">
+                <textarea id="permHighSphere"></textarea>
+                <textarea id="permGatekeepers"></textarea>
+                <textarea id="permHealers"></textarea>
+                <input id="permMapOut" type="text">
+                <input id="permMapIn" type="text">
+                <textarea id="entryHighSphere"></textarea>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="primary" id="btnGenPerm">Составить код разрешения</button>
+            </div>
+          </div>
+          
+          <div class="card">
+            <label for="permResult">Результат (BB-код)</label>
+            <textarea id="permResult" class="output" readonly></textarea>
+            <div class="actions">
+              <button class="secondary copy-btn" data-copy="permResult">Скопировать код</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="form-entry" class="stack form-view hidden">
+          <div class="card stack">
+            <p class="help">Для кода вступления используется актуальный список Верховной сферы из таблицы.</p>
+            <div class="actions">
+              <button class="primary" id="btnGenEntry">Составить код вступления</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <label for="entryResult">Результат (BB-код)</label>
+            <textarea id="entryResult" class="output" readonly></textarea>
+            <div class="actions">
+              <button class="secondary copy-btn" data-copy="entryResult">Скопировать код</button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
