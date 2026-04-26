@@ -1,4 +1,4 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbyAjWWlyMmhTLPq2efcmhWWks6c9FZ_sOVoXMPBNapn5zCo3-dhtfPJETW2wKNsRQ/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbxXuRXCtZAzgfasNuw-NxDgA7kEUImf3XUb-qQIisn-rX5jHDPfkPEg6nFk3TDg3A/exec"; 
 const qs = (id) => document.getElementById(id);
 
 let cachedTemplates = { normal: '', endless: '', refusal: '', entry: '' };
