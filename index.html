@@ -27,13 +27,17 @@
           <div class="acc-item">
             <button class="nav-btn" type="button" data-form="entry" style="padding: 14px 16px; font-size: 15px; border: none; color: var(--text);">ВСТУПЛЕНИЕ</button>
           </div>
+
+          <div class="acc-item">
+            <button class="nav-btn" type="button" data-form="initiation" style="padding: 14px 16px; font-size: 15px; border: none; color: var(--text);">ПОСВЯЩЕНИЕ</button>
+          </div>
         </div>
 
         <div style="margin-top: auto; padding: 20px 0;">
           <p class="help" style="font-size: 11px; line-height: 1.6;">
             Вся информация обновляется через таблицу.<br>
             <b>Обновлено:</b> <span id="sheetDate">загрузка...</span><br><br>
-            <a href="https://docs.google.com/spreadsheets/d/11PsKvkw0bqAZPiEfNmG142m9WHe2JdoyP9gmjy-RL8w/edit" target="_blank" style="color: var(--accent); text-decoration: underline;">Перейти к таблице
+            <a href="https://docs.google.com/spreadsheets/d/1IWT8OK9DttAdYoTNCD8H2C3Fe3u9DCSqZ4UC8ui9yx4/edit" target="_blank" style="color: var(--accent); text-decoration: underline;">Перейти к таблице
             </a>
           </p>
         </div>
@@ -63,7 +67,7 @@
                 <label for="permFactionType">Тип фракции</label>
                 <select id="permFactionType">
                   <option value="official" selected>Официальная фракция</option>
-                  <option value="autonomy">Автономия / Полуофициальная / Церковная</option>
+                  <option value="autonomy">Автономия / Полуофициальная / ЦТ</option>
                   <option value="loner">Одиночка вне Церковной территории</option>
                 </select>
               </div>
@@ -130,6 +134,60 @@
               <button class="secondary copy-btn" data-copy="entryResult">Скопировать код</button>
             </div>
           </div>
+        </div>
+
+        <div id="form-initiation" class="stack form-view hidden">
+          <div class="card stack">
+            <div class="grid">
+              
+              <div class="full">
+                <label for="initType">Вид посвящения</label>
+                <select id="initType" onchange="document.getElementById('mentorFields').classList.toggle('hidden', this.value === 'topotushka'); document.getElementById('initReportCard').classList.toggle('hidden', this.value === 'topotushka');">
+                  <option value="yunga" selected>Посвящение в Юнги (с выдачей наставника)</option>
+                  <option value="topotushka">Посвящение в Топотушки</option>
+                </select>
+              </div>
+
+              <div class="full">
+                <label for="initTargetId">ID Посвящаемого</label>
+                <input id="initTargetId" type="text" placeholder="1234567">
+              </div>
+
+            <div id="mentorFields" class="full stack">  
+                <div>
+                  <label for="initLastMentor">Прошлый наставник (из ВК)</label>
+                  <input id="initLastMentor" type="text" placeholder=" ">
+                </div>
+
+                <div>
+                  <label for="initNextMentor">Новый наставник (Авто-выдача)</label>
+                  <input id="initNextMentor" type="text" readonly placeholder="">
+                </div>
+              </div>
+              
+            </div>
+
+            <div class="actions">
+              <button class="primary" id="btnGenInitiation">Составить код посвящения</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <label for="initResult">Код ответа (для блога / ЛС)</label>
+            <textarea id="initResult" class="output" readonly></textarea>
+            <div class="actions">
+              <button class="secondary copy-btn" data-copy="initResult">Скопировать код</button>
+            </div>
+          </div>
+
+          <div class="card" id="initReportCard">
+            <label for="initReportResult">Код отчета (для ВК)</label>
+            <textarea id="initReportResult" class="output" readonly style="min-height: 80px;"></textarea>
+            <div class="actions">
+              <button class="secondary copy-btn" data-copy="initReportResult">Скопировать отчет</button>
+            </div>
+          </div>
+
         </div>
 
       </section>

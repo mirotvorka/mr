@@ -1,7 +1,13 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbxXuRXCtZAzgfasNuw-NxDgA7kEUImf3XUb-qQIisn-rX5jHDPfkPEg6nFk3TDg3A/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbwetyYlqTfJw5pV-J0XKyQg_Ye5TT_Sn3OutJSHU4malRtoFVHKVr7czWEcZapdeavx/exec"; 
 const qs = (id) => document.getElementById(id);
 
-let cachedTemplates = { normal: '', endless: '', refusal: '', entry: '' };
+let cachedTemplates = { 
+    normal: '', endless: '', refusal: '', entry: '', 
+    yunga: '', topotushka: '', otherInit: '' 
+};
+let mentorsQueue = []; 
+let currentNextMentor = null; 
+let cachedVars = {}; 
 
 function getMoscowDate() {
     const d = new Date();
@@ -17,16 +23,40 @@ function addDays(dateStr, days) {
     return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getFullYear()).slice(-2)}`;
 }
 
-function formatContacts(raw) {
-    if (!raw || !raw.trim()) return '';
-    const items = raw.trim().split('\n').map(l => {
-        const p = l.trim().split(/\s+/);
-        return p.length >= 2 ? `[link${p[0]}] [[url=${p[1]}]VK[/url]]` : null;
-    }).filter(Boolean);
-    if (items.length === 0) return '';
-    if (items.length === 1) return items[0];
-    const last = items.pop();
-    return items.join(', ') + ' и ' + last;
+// Функция расчета очереди наставников
+function calcNextMentor() {
+    if (!qs('initLastMentor') || !qs('initNextMentor') || mentorsQueue.length === 0) return;
+    
+    const lastMentorName = qs('initLastMentor').value.trim().toLowerCase();
+    
+    // Фильтруем только тех, кто открыт
+    const openMentors = mentorsQueue.filter(m => m.status.toLowerCase().includes('открыт'));
+    
+    if (openMentors.length === 0) {
+        qs('initNextMentor').value = "Нет открытых наставников!";
+        currentNextMentor = null;
+        return;
+    }
+
+    currentNextMentor = openMentors[0]; // По умолчанию первый открытый
+    
+    if (lastMentorName) {
+        // Ищем индекс последнего выданного (из ВК) в общем списке
+        const lastIndex = mentorsQueue.findIndex(m => m.name.toLowerCase() === lastMentorName);
+        
+        if (lastIndex !== -1) {
+            // Идем по кругу от найденного человека и ищем первого открытого
+            for (let i = 1; i <= mentorsQueue.length; i++) {
+                let checkIndex = (lastIndex + i) % mentorsQueue.length;
+                if (mentorsQueue[checkIndex].status.toLowerCase().includes('открыт')) {
+                    currentNextMentor = mentorsQueue[checkIndex];
+                    break;
+                }
+            }
+        }
+    }
+    
+    qs('initNextMentor').value = currentNextMentor.name;
 }
 
 const calc = () => {
@@ -66,41 +96,34 @@ const calc = () => {
 };
 
 async function syncWithSheet() {
-    const b1 = qs('btnGenPerm');
-    const b2 = qs('btnGenEntry');
-    
-    if (b1) { b1.disabled = true; b1.textContent = "Загрузка шаблонов..."; }
-    if (b2) { b2.disabled = true; b2.textContent = "Загрузка..."; }
+    const buttons = [qs('btnGenPerm'), qs('btnGenEntry'), qs('btnGenInitiation')];
+    buttons.forEach(b => { if(b) { b.disabled = true; b.textContent = "Загрузка данных..."; }});
 
     try {
         const res = await fetch(API_URL);
         const data = await res.json();
         
-        cachedTemplates = {
-            normal: data.normal || '',
-            endless: data.endless || '',
-            refusal: data.refusal || '',
-            entry: data.entry || ''
-        };
-        
+        // Распределяем шаблоны из нового формата
+        cachedTemplates = data.templates;
+        cachedVars = data.vars;
+        mentorsQueue = data.mentors || [];
+
         if (qs('sheetDate')) qs('sheetDate').textContent = data.lastUpdate || "—";
-
-        const fields = {
-            'permHighSphere': data.high, 'permGatekeepers': data.gate, 
-            'permHealers': data.heal, 'permMapOut': data.mapOut, 
-            'permMapIn': data.mapIn, 'entryHighSphere': data.high
-        };
-
-        for (let id in fields) if (qs(id)) qs(id).value = fields[id] || '';
         
+        // Вставляем имя последнего наставника из ВК
+        if (qs('initLastMentor') && data.lastMentorName) {
+            qs('initLastMentor').value = data.lastMentorName;
+            calcNextMentor();
+        }
+
         calc();
         
-        if (b1) { b1.disabled = false; b1.textContent = "Составить код разрешения"; }
-        if (b2) { b2.disabled = false; b2.textContent = "Составить код вступления"; }
+        if (qs('btnGenPerm')) { qs('btnGenPerm').disabled = false; qs('btnGenPerm').textContent = "Составить код разрешения"; }
+        if (qs('btnGenEntry')) { qs('btnGenEntry').disabled = false; qs('btnGenEntry').textContent = "Составить код вступления"; }
+        if (qs('btnGenInitiation')) { qs('btnGenInitiation').disabled = false; qs('btnGenInitiation').textContent = "Составить код посвящения"; }
 
     } catch (e) { 
-        console.error("Ошибка:", e); 
-        if (b1) b1.textContent = "Ошибка связи. Обнови страницу!";
+        console.error("Ошибка синхронизации:", e); 
         if (qs('sheetDate')) qs('sheetDate').textContent = "ошибка";
     }
 }
@@ -109,6 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
     syncWithSheet(); 
     if (qs('permStartDate')) qs('permStartDate').value = getMoscowDate();
 
+    // Навигация
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -125,6 +149,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (el) el.addEventListener('input', calc);
     });
 
+    if (qs('initLastMentor')) {
+        qs('initLastMentor').addEventListener('input', calcNextMentor);
+    }
+
+    // --- ГЕНЕРАЦИЯ РАЗРЕШЕНИЯ ---
     if (qs('btnGenPerm')) {
         qs('btnGenPerm').addEventListener('click', () => {
             const type = qs('permType').value;
@@ -132,57 +161,96 @@ document.addEventListener('DOMContentLoaded', () => {
             const guarID = qs('permGuarantorId') ? qs('permGuarantorId').value.trim() : '';
             
             let isForcedRefusal = (type === 'обычное' && fac === 'loner' && !guarID);
-            
             let tpl = (type === 'отказ' || isForcedRefusal) ? cachedTemplates.refusal : (type === 'бессрочное' ? cachedTemplates.endless : cachedTemplates.normal);
             
             if (!tpl) return alert("Шаблон не загружен!");
 
             const guarantorPart = guarID ? `[br]Поручителем выступил игрок [b][cat${guarID}] [${guarID}].[/b] За все ваши действия этот игрок несёт ответственность.` : "";
-
-            const textRefusal = isForcedRefusal 
-                ? "К сожалению, вынуждены отказать вам в получении разрешения на посещение шайки Разбитого Корабля.[br]На данный момент мы предоставляем разрешение одиночкам вне Церковной Территории только при наличии поручителя. Вы можете повторно запросить собеседование [b]при смене фракции или получении рекомендации от игрока из шайки[/b]." 
-                : "На данный момент мы не можем предоставить вам разрешение на посещение территории.";
+            const textRefusal = isForcedRefusal ? "К сожалению... (текст сокращен)" : "На данный момент...";
 
             const data = {
-                '{РАЗРЕШЕНЕЦ}': (qs('permTargetId') ? qs('permTargetId').value.trim() : '') || 'ID',
-                '{НАЧАЛО}': qs('permStartDate') ? qs('permStartDate').value : '',
-                '{КОНЕЦ}': (type === 'бессрочное') ? 'бессрочное' : (qs('permEndDate') ? qs('permEndDate').value : ''),
-                '{ПЕРЕВЫДАЧА}': qs('permReReqDate') ? qs('permReReqDate').value : '',
+                '{РАЗРЕШЕНЕЦ}': qs('permTargetId').value.trim() || 'ID',
+                '{НАЧАЛО}': qs('permStartDate').value,
+                '{КОНЕЦ}': (type === 'бессрочное') ? 'бессрочное' : qs('permEndDate').value,
+                '{ПЕРЕВЫДАЧА}': qs('permReReqDate').value,
                 '{ПОРУЧИТЕЛЬ}': guarantorPart,
                 '{ТЕКСТ_ОТКАЗА}': textRefusal,
-                '{ВЕРХОВНАЯ_СФЕРА}': formatContacts(qs('permHighSphere') ? qs('permHighSphere').value : ''),
-                '{ОТКРЫВАТОРЫ}': formatContacts(qs('permGatekeepers') ? qs('permGatekeepers').value : ''),
-                '{СУДОВЫЕ_ВРАЧИ}': formatContacts(qs('permHealers') ? qs('permHealers').value : ''),
-                '{КАРТА_ВНЕЛАГЕРНАЯ}': qs('permMapOut') ? qs('permMapOut').value : '',
-                '{КАРТА_ЛАГЕРНАЯ}': qs('permMapIn') ? qs('permMapIn').value : ''
+                '{ВЕРХОВНАЯ_СФЕРА}': cachedVars.high,
+                '{ОТКРЫВАТОРЫ}': cachedVars.gate,
+                '{СУДОВЫЕ_ВРАЧИ}': cachedVars.heal,
+                '{КАРТА_ВНЕЛАГЕРНАЯ}': cachedVars.mapOut,
+                '{КАРТА_ЛАГЕРНАЯ}': cachedVars.mapIn
             };
 
             let res = tpl;
             for (let k in data) res = res.split(k).join(data[k]);
-            if (qs('permResult')) qs('permResult').value = res;
+            qs('permResult').value = res;
         });
     }
 
+    // --- ГЕНЕРАЦИЯ ВСТУПЛЕНИЯ ---
     if (qs('btnGenEntry')) {
         qs('btnGenEntry').addEventListener('click', () => {
             const tpl = cachedTemplates.entry;
-            if (!tpl) return alert("Шаблон вступления еще не загружен!");
-            const res = tpl.split('{ВЕРХОВНАЯ_СФЕРА}').join(formatContacts(qs('entryHighSphere').value));
-            if (qs('entryResult')) qs('entryResult').value = res;
+            if (!tpl) return alert("Шаблон вступления не загружен!");
+            const res = tpl.split('{ВЕРХОВНАЯ_СФЕРА}').join(cachedVars.high);
+            qs('entryResult').value = res;
         });
     }
 
-    document.querySelectorAll('.acc-head').forEach(h => {
-        h.addEventListener('click', () => {
-            const item = h.closest('.acc-item');
-            if (item) item.classList.toggle('open');
+    // --- ГЕНЕРАЦИЯ ПОСВЯЩЕНИЯ ---
+    if (qs('btnGenInitiation')) {
+        qs('btnGenInitiation').addEventListener('click', () => {
+            const type = qs('initType').value;
+            const targetId = qs('initTargetId').value.trim() || 'ID';
+            
+            let res = '';
+            let report = '';
+
+            if (type === 'yunga') {
+                if (!currentNextMentor) return alert("Наставник не определен!");
+                
+                // Код для блога/ЛС
+                res = (cachedTemplates.yunga || "")
+                    .split('{АЙДИ}').join(targetId)
+                    .split('{НАСТАВНИК}').join(`[link${currentNextMentor.id}]`);
+                
+                // Код отчета для ВК
+report = `#Наставники\n${targetId} — ${currentNextMentor.name}\n[ ${currentNextMentor.vk} ]`;
+            } 
+            else if (type === 'topotushka') {
+                res = (cachedTemplates.topotushka || "").split('{АЙДИ}').join(targetId);
+            } 
+            else {
+                res = (cachedTemplates.otherInit || "").split('{АЙДИ}').join(targetId);
+            }
+
+            qs('initResult').value = res;
+            if (qs('initReportResult')) qs('initReportResult').value = report;
         });
-    });
+    }
 
     document.querySelectorAll('.copy-btn').forEach(b => {
         b.addEventListener('click', () => {
             const el = qs(b.dataset.copy);
             if (el) { el.select(); document.execCommand('copy'); }
         });
+    });
+});
+
+const navToggle = qs('navToggle');
+const navCol = qs('navCol');
+
+if (navToggle && navCol) {
+    navToggle.addEventListener('click', () => {
+        navCol.classList.toggle('mobile-open');
+    });
+}
+
+document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        if (navCol.classList.contains('mobile-open')) {
+            navCol.classList.remove('mobile-open');
+        }
     });
 });
