@@ -97,7 +97,7 @@ const calc = () => {
 
 async function syncWithSheet() {
     const buttons = [qs('btnGenPerm'), qs('btnGenEntry'), qs('btnGenInitiation')];
-    buttons.forEach(b => { if(b) { b.disabled = true; b.textContent = "Загрузка данных..."; }});
+    buttons.forEach(b => { if(b) { b.disabled = true; b.textContent = "Загрузка..."; }});
 
     try {
         const res = await fetch(API_URL);
