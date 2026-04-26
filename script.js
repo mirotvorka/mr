@@ -1,9 +1,8 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbwhh6YTEDagLoc7czQrXYuuNu2eQzCmGOVRXcZj6fKNHL9KrUsU5p3K_cyLM8YLRj6Z/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbyAjWWlyMmhTLPq2efcmhWWks6c9FZ_sOVoXMPBNapn5zCo3-dhtfPJETW2wKNsRQ/exec"; 
 const qs = (id) => document.getElementById(id);
 
 let cachedTemplates = { normal: '', endless: '', refusal: '', entry: '' };
 
-// --- МАТЕМАТИКА ДАТ ---
 function getMoscowDate() {
     const d = new Date();
     const mskDate = new Date(d.getTime() + (3 * 60 + d.getTimezoneOffset()) * 60000);
@@ -30,7 +29,6 @@ function formatContacts(raw) {
     return items.join(', ') + ' и ' + last;
 }
 
-// --- ОСНОВНОЙ РАСЧЕТ И СКРЫТИЕ ПОЛЕЙ ---
 const calc = () => {
     if (!qs('permType')) return;
     const type = qs('permType').value;
@@ -38,7 +36,6 @@ const calc = () => {
     const guar = qs('permGuarantorId') ? qs('permGuarantorId').value.trim() : '';
     const start = qs('permStartDate') ? qs('permStartDate').value : '';
 
-    // Скрытие полей при выборе "Отказ"
     const wraps = ['permTargetWrap', 'permFactionWrap', 'permGuarantorWrap', 'permDateWrap', 'permEndWrap', 'permReReqWrap'];
     wraps.forEach(id => {
         const el = qs(id);
@@ -48,7 +45,6 @@ const calc = () => {
         }
     });
 
-    // Расчеты дат
     if (type === 'обычное' && start) {
         let days = (fac === 'official') ? (guar ? 31 : 14) : (fac === 'autonomy' ? (guar ? 14 : 7) : 7);
         const end = addDays(start, days);
@@ -62,7 +58,6 @@ const calc = () => {
         if (qs('permReReqDate')) qs('permReReqDate').value = addDays(getMoscowDate(), 31);
     }
     
-    // Предупреждение для одиночек без поручителя
     const errorMsg = qs('permErrorMsg');
     if (errorMsg) {
         if (type !== 'отказ' && fac === 'loner' && !guar) errorMsg.classList.remove('hidden');
@@ -70,7 +65,6 @@ const calc = () => {
     }
 };
 
-// --- СИНХРОНИЗАЦИЯ (С ЗАГРУЗКОЙ) ---
 async function syncWithSheet() {
     const b1 = qs('btnGenPerm');
     const b2 = qs('btnGenEntry');
@@ -89,7 +83,6 @@ async function syncWithSheet() {
             entry: data.entry || ''
         };
         
-        // Вставляем дату последнего обновления из таблицы
         if (qs('sheetDate')) qs('sheetDate').textContent = data.lastUpdate || "—";
 
         const fields = {
@@ -116,7 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
     syncWithSheet(); 
     if (qs('permStartDate')) qs('permStartDate').value = getMoscowDate();
 
-    // Навигация
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -133,31 +125,31 @@ document.addEventListener('DOMContentLoaded', () => {
         if (el) el.addEventListener('input', calc);
     });
 
-    // --- ГЕНЕРАЦИЯ РАЗРЕШЕНИЯ ---
     if (qs('btnGenPerm')) {
         qs('btnGenPerm').addEventListener('click', () => {
             const type = qs('permType').value;
             const fac = qs('permFactionType') ? qs('permFactionType').value : 'official';
             const guarID = qs('permGuarantorId') ? qs('permGuarantorId').value.trim() : '';
             
-            // Логика "Принудительного отказа" для одиночек без поручителя
             let isForcedRefusal = (type === 'обычное' && fac === 'loner' && !guarID);
+            
             let tpl = (type === 'отказ' || isForcedRefusal) ? cachedTemplates.refusal : (type === 'бессрочное' ? cachedTemplates.endless : cachedTemplates.normal);
             
-            if (!tpl) return;
+            if (!tpl) return alert("Шаблон не загружен!");
 
-            const guarantorPart = guarID ? `[br]Поручителем выступил игрок [b][cat${guarID}] [${guarID}].[/b] За все ваши действия этот игрок несёт ответственность.[br]` : "";
+            const guarantorPart = guarID ? `[br]Поручителем выступил игрок [b][cat${guarID}] [${guarID}].[/b] За все ваши действия этот игрок несёт ответственность.` : "";
+
+            const textRefusal = isForcedRefusal 
+                ? "К сожалению, вынуждены отказать вам в получении разрешения на посещение шайки Разбитого Корабля.[br]На данный момент мы предоставляем разрешение одиночкам вне Церковной Территории только при наличии поручителя. Вы можете повторно запросить собеседование [b]при смене фракции или получении рекомендации от игрока из шайки[/b]." 
+                : "На данный момент мы не можем предоставить вам разрешение на посещение территории.";
 
             const data = {
                 '{РАЗРЕШЕНЕЦ}': (qs('permTargetId') ? qs('permTargetId').value.trim() : '') || 'ID',
                 '{НАЧАЛО}': qs('permStartDate') ? qs('permStartDate').value : '',
                 '{КОНЕЦ}': (type === 'бессрочное') ? 'бессрочное' : (qs('permEndDate') ? qs('permEndDate').value : ''),
                 '{ПЕРЕВЫДАЧА}': qs('permReReqDate') ? qs('permReReqDate').value : '',
-                '{ПЕРЕПОДАЧА}': qs('permReReqDate') ? qs('permReReqDate').value : '',
                 '{ПОРУЧИТЕЛЬ}': guarantorPart,
-                '{ТЕКСТ_ОТКАЗА}': isForcedRefusal 
-                    ? "Добрый день! К сожалению, вынуждены отказать вам в получении разрешения на посещение шайки Разбитого Корабля.[br][br]На данный момент мы предоставляем разрешение одиночкам вне Церковной Территории только при наличии поручителя. Вы можете повторно запросить собеседование [b]при смене фракции или получении рекомендации от игрока из шайки[/b]." 
-                    : "На данный момент мы не можем предоставить вам разрешение на посещение территории.",
+                '{ТЕКСТ_ОТКАЗА}': textRefusal,
                 '{ВЕРХОВНАЯ_СФЕРА}': formatContacts(qs('permHighSphere') ? qs('permHighSphere').value : ''),
                 '{ОТКРЫВАТОРЫ}': formatContacts(qs('permGatekeepers') ? qs('permGatekeepers').value : ''),
                 '{СУДОВЫЕ_ВРАЧИ}': formatContacts(qs('permHealers') ? qs('permHealers').value : ''),
@@ -171,16 +163,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- ГЕНЕРАЦИЯ ВСТУПЛЕНИЯ ---
     if (qs('btnGenEntry')) {
         qs('btnGenEntry').addEventListener('click', () => {
-            if (!cachedTemplates.entry) return alert("Шаблон вступления еще не загружен!");
-            const res = cachedTemplates.entry.split('{ВЕРХОВНАЯ_СФЕРА}').join(formatContacts(qs('entryHighSphere').value));
+            const tpl = cachedTemplates.entry;
+            if (!tpl) return alert("Шаблон вступления еще не загружен!");
+            const res = tpl.split('{ВЕРХОВНАЯ_СФЕРА}').join(formatContacts(qs('entryHighSphere').value));
             if (qs('entryResult')) qs('entryResult').value = res;
         });
     }
 
-    // Аккордеоны
     document.querySelectorAll('.acc-head').forEach(h => {
         h.addEventListener('click', () => {
             const item = h.closest('.acc-item');
@@ -188,7 +179,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Копирование
     document.querySelectorAll('.copy-btn').forEach(b => {
         b.addEventListener('click', () => {
             const el = qs(b.dataset.copy);
