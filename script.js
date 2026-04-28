@@ -1,10 +1,11 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbxbz2Q8w7qE0nxCUPbNO4cDjLRlHgJyOq96ndmubvLITUZ_8W9NRaNG_HM_8oRU9i1-/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbzmAhaEpSqqN1mDQjzjExm7JUPiCoYnL-XQDAyFwgfLn61557l-weU5_jTXNFswvp89/exec"; 
 const qs = (id) => document.getElementById(id);
 
 let cachedTemplates = { 
-    normal: '', endless: '', refusal: '', entry: '', 
-    yunga: '', topotushka: '', otherInit: '' 
+    normal: '', endless: '', refusal: '', repeat: '', entry: '', 
+    yunga: '', topotushka: '', otherInit: '', exile: '', training: '' 
 };
+
 let mentorsQueue = []; 
 let currentNextMentor = null; 
 let cachedVars = {}; 
@@ -23,29 +24,34 @@ function addDays(dateStr, days) {
     return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getFullYear()).slice(-2)}`;
 }
 
-// Функция расчета очереди наставников
-function calcNextMentor() {
-    if (!qs('initLastMentor') || !qs('initNextMentor') || mentorsQueue.length === 0) return;
-    
-    const lastMentorName = qs('initLastMentor').value.trim().toLowerCase();
-    
-    // Фильтруем только тех, кто открыт
+function buildAndSelectNextMentor(lastMentorName) {
+    const selectEl = qs('initNextMentor');
+    if (!selectEl || mentorsQueue.length === 0) return;
+
+    selectEl.innerHTML = '';
+
     const openMentors = mentorsQueue.filter(m => m.status.toLowerCase().includes('открыт'));
-    
+
     if (openMentors.length === 0) {
-        qs('initNextMentor').value = "Нет открытых наставников!";
+        selectEl.innerHTML = '<option disabled>Нет открытых наставников!</option>';
         currentNextMentor = null;
         return;
     }
 
-    currentNextMentor = openMentors[0]; // По умолчанию первый открытый
-    
+    openMentors.forEach(m => {
+        const option = document.createElement('option');
+        option.value = m.name;
+        option.textContent = m.name;
+        selectEl.appendChild(option);
+    });
+
+    currentNextMentor = openMentors[0]; 
+
     if (lastMentorName) {
-        // Ищем индекс последнего выданного (из ВК) в общем списке
-        const lastIndex = mentorsQueue.findIndex(m => m.name.toLowerCase() === lastMentorName);
+        const targetName = lastMentorName.trim().toLowerCase();
+        const lastIndex = mentorsQueue.findIndex(m => m.name.toLowerCase() === targetName);
         
         if (lastIndex !== -1) {
-            // Идем по кругу от найденного человека и ищем первого открытого
             for (let i = 1; i <= mentorsQueue.length; i++) {
                 let checkIndex = (lastIndex + i) % mentorsQueue.length;
                 if (mentorsQueue[checkIndex].status.toLowerCase().includes('открыт')) {
@@ -56,7 +62,11 @@ function calcNextMentor() {
         }
     }
     
-    qs('initNextMentor').value = currentNextMentor.name;
+    selectEl.value = currentNextMentor.name;
+
+    selectEl.addEventListener('change', (e) => {
+        currentNextMentor = mentorsQueue.find(m => m.name === e.target.value);
+    });
 }
 
 const calc = () => {
@@ -66,14 +76,19 @@ const calc = () => {
     const guar = qs('permGuarantorId') ? qs('permGuarantorId').value.trim() : '';
     const start = qs('permStartDate') ? qs('permStartDate').value : '';
 
-    const wraps = ['permTargetWrap', 'permFactionWrap', 'permGuarantorWrap', 'permDateWrap', 'permEndWrap', 'permReReqWrap'];
-    wraps.forEach(id => {
-        const el = qs(id);
-        if (el) {
-            if (type === 'отказ') el.classList.add('hidden');
-            else el.classList.remove('hidden');
-        }
+    ['permTargetWrap', 'permFactionWrap', 'permGuarantorWrap', 'permDateWrap', 'permEndWrap', 'permReReqWrap'].forEach(id => {
+        if (qs(id)) qs(id).classList.remove('hidden');
     });
+
+    if (type === 'повторный' || type === 'отказ') {
+        ['permTargetWrap', 'permFactionWrap', 'permGuarantorWrap', 'permDateWrap', 'permEndWrap', 'permReReqWrap'].forEach(id => {
+            if (qs(id)) qs(id).classList.add('hidden');
+        });
+    } else if (type === 'бессрочное') {
+        ['permFactionWrap', 'permGuarantorWrap', 'permDateWrap', 'permEndWrap', 'permReReqWrap'].forEach(id => {
+            if (qs(id)) qs(id).classList.add('hidden');
+        });
+    }
 
     if (type === 'обычное' && start) {
         let days = (fac === 'official') ? (guar ? 31 : 14) : (fac === 'autonomy' ? (guar ? 14 : 7) : 7);
@@ -90,37 +105,36 @@ const calc = () => {
     
     const errorMsg = qs('permErrorMsg');
     if (errorMsg) {
-        if (type !== 'отказ' && fac === 'loner' && !guar) errorMsg.classList.remove('hidden');
+        if (type === 'обычное' && fac === 'loner' && !guar) errorMsg.classList.remove('hidden');
         else errorMsg.classList.add('hidden');
     }
 };
 
 async function syncWithSheet() {
-    const buttons = [qs('btnGenPerm'), qs('btnGenEntry'), qs('btnGenInitiation')];
-    buttons.forEach(b => { if(b) { b.disabled = true; b.textContent = "Загрузка..."; }});
+const buttons = [qs('btnGenPerm'), qs('btnGenEntry'), qs('btnGenInitiation'), qs('btnGenExile')];   
+ buttons.forEach(b => { if(b) { b.disabled = true; b.textContent = "Загрузка..."; }});
 
     try {
         const res = await fetch(API_URL);
         const data = await res.json();
         
-        // Распределяем шаблоны из нового формата
         cachedTemplates = data.templates;
         cachedVars = data.vars;
         mentorsQueue = data.mentors || [];
 
         if (qs('sheetDate')) qs('sheetDate').textContent = data.lastUpdate || "—";
         
-        // Вставляем имя последнего наставника из ВК
         if (qs('initLastMentor') && data.lastMentorName) {
             qs('initLastMentor').value = data.lastMentorName;
-            calcNextMentor();
         }
+        buildAndSelectNextMentor(data.lastMentorName);
 
         calc();
         
-        if (qs('btnGenPerm')) { qs('btnGenPerm').disabled = false; qs('btnGenPerm').textContent = "Составить код разрешения"; }
+       if (qs('btnGenPerm')) { qs('btnGenPerm').disabled = false; qs('btnGenPerm').textContent = "Составить код разрешения"; }
         if (qs('btnGenEntry')) { qs('btnGenEntry').disabled = false; qs('btnGenEntry').textContent = "Составить код вступления"; }
         if (qs('btnGenInitiation')) { qs('btnGenInitiation').disabled = false; qs('btnGenInitiation').textContent = "Составить код посвящения"; }
+        if (qs('btnGenExile')) { qs('btnGenExile').disabled = false; qs('btnGenExile').textContent = "Составить код изгнания"; } 
 
     } catch (e) { 
         console.error("Ошибка синхронизации:", e); 
@@ -132,7 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
     syncWithSheet(); 
     if (qs('permStartDate')) qs('permStartDate').value = getMoscowDate();
 
-    // Навигация
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -150,13 +163,38 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (qs('initLastMentor')) {
-        qs('initLastMentor').addEventListener('input', calcNextMentor);
+        qs('initLastMentor').addEventListener('input', (e) => {
+            buildAndSelectNextMentor(e.target.value);
+        });
+    }
+    const initTypeEl = qs('initType');
+    const initTargetIdEl = qs('initTargetId');
+    
+    if (initTypeEl && initTargetIdEl) {
+        const toggleInitFields = () => {
+            const idWrapper = initTargetIdEl.parentElement; 
+            
+            if (initTypeEl.value === 'topotushka') {
+                idWrapper.classList.add('hidden'); 
+            } else {
+                idWrapper.classList.remove('hidden'); 
+            }
+        };
+        
+        initTypeEl.addEventListener('change', toggleInitFields);
+        toggleInitFields(); 
     }
 
-    // --- ГЕНЕРАЦИЯ РАЗРЕШЕНИЯ ---
     if (qs('btnGenPerm')) {
         qs('btnGenPerm').addEventListener('click', () => {
             const type = qs('permType').value;
+            
+            if (type === 'повторный') {
+                if (!cachedTemplates.repeat) return alert("Шаблон не загружен из таблицы!");
+                qs('permResult').value = cachedTemplates.repeat;
+                return;
+            }
+
             const fac = qs('permFactionType') ? qs('permFactionType').value : 'official';
             const guarID = qs('permGuarantorId') ? qs('permGuarantorId').value.trim() : '';
             
@@ -166,10 +204,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!tpl) return alert("Шаблон не загружен!");
 
             const guarantorPart = guarID ? `[br]Поручителем выступил игрок [b][cat${guarID}] [${guarID}].[/b] За все ваши действия этот игрок несёт ответственность.` : "";
-const textRefusal = isForcedRefusal 
-    ? "К сожалению, вынуждены отказать вам в получении разрешения на посещение территории шайки Разбитого Корабля.[br]На данный момент мы предоставляем разрешение одиночкам вне Церковной Территории только при наличии поручителя. Вы можете повторно запросить собеседование [b]при смене фракции или получении рекомендации от игрока из шайки[/b]." 
-    : "На данный момент мы не можем предоставить вам разрешение на посещение территории.";
-
+            const textRefusal = isForcedRefusal 
+                ? "К сожалению, вынуждены отказать вам в получении разрешения на посещение территории шайки Разбитого Корабля.[br]На данный момент мы предоставляем разрешение одиночкам вне Церковной Территории только при наличии поручителя. Вы можете повторно запросить собеседование [b]при смене фракции или получении рекомендации от игрока из шайки[/b]." 
+                : "На данный момент мы не можем предоставить вам разрешение на посещение территории.";
 
             const data = {
                 '{РАЗРЕШЕНЕЦ}': qs('permTargetId').value.trim() || 'ID',
@@ -191,7 +228,6 @@ const textRefusal = isForcedRefusal
         });
     }
 
-    // --- ГЕНЕРАЦИЯ ВСТУПЛЕНИЯ ---
     if (qs('btnGenEntry')) {
         qs('btnGenEntry').addEventListener('click', () => {
             const tpl = cachedTemplates.entry;
@@ -201,7 +237,6 @@ const textRefusal = isForcedRefusal
         });
     }
 
-    // --- ГЕНЕРАЦИЯ ПОСВЯЩЕНИЯ ---
     if (qs('btnGenInitiation')) {
         qs('btnGenInitiation').addEventListener('click', () => {
             const type = qs('initType').value;
@@ -213,12 +248,10 @@ const textRefusal = isForcedRefusal
             if (type === 'yunga') {
                 if (!currentNextMentor) return alert("Наставник не определен!");
                 
-                // Код для блога/ЛС
                 res = (cachedTemplates.yunga || "")
                     .split('{АЙДИ}').join(targetId)
                     .split('{НАСТАВНИК}').join(`[link${currentNextMentor.id}]`);
                 
-                // Код отчета для ВК
 report = `#Наставники\n${targetId} — ${currentNextMentor.name}\n[ ${currentNextMentor.vk} ]`;
             } 
             else if (type === 'topotushka') {
@@ -230,6 +263,35 @@ report = `#Наставники\n${targetId} — ${currentNextMentor.name}\n[ ${
 
             qs('initResult').value = res;
             if (qs('initReportResult')) qs('initReportResult').value = report;
+        });
+    }
+
+    if (qs('btnGenExile')) {
+        qs('btnGenExile').addEventListener('click', () => {
+            const type = qs('exileType').value;
+            let res = '';
+            
+            if (type === 'обычное') {
+                res = cachedTemplates.exile || "";
+            } else if (type === 'отработка') {
+                let tpl = cachedTemplates.training || "";
+                
+                const today = getMoscowDate();
+                const [d, m, y] = today.split('.').map(Number);
+                
+                const nextMonthDate = new Date(2000 + y, m, d); 
+                
+                const endDay = String(nextMonthDate.getDate()).padStart(2, '0');
+                const endMonth = String(nextMonthDate.getMonth() + 1).padStart(2, '0');
+                const endYear = String(nextMonthDate.getFullYear()).slice(-2);
+                
+                const endDate = `${endDay}.${endMonth}.${endYear}`;
+                const srok = `${today} — ${endDate}`;
+                
+                res = tpl.split('{СРОК_ИЗГНАНИЯ}').join(srok);
+            }
+
+            qs('exileResult').value = res;
         });
     }
 

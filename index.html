@@ -31,6 +31,10 @@
           <div class="acc-item">
             <button class="nav-btn" type="button" data-form="initiation" style="padding: 14px 16px; font-size: 15px; border: none; color: var(--text);">ПОСВЯЩЕНИЕ</button>
           </div>
+
+          <div class="acc-item">
+            <button class="nav-btn acc-head" type="button" data-form="exile" style="padding: 14px 16px; font-size: 15px; border: none; color: var(--text);">ИЗГНАНИЕ</button>
+          </div>
         </div>
 
         <div style="margin-top: auto; padding: 20px 0;">
@@ -51,11 +55,12 @@
             <div class="grid">
               <div class="full">
                 <label for="permType">Вид разрешения</label>
-                <select id="permType">
-                  <option value="обычное" selected>Обычное разрешение на посещение</option>
-                  <option value="бессрочное">Бессрочное разрешение</option>
-                  <option value="отказ">Отказ в разрешении</option>
-                </select>
+             <select id="permType">
+  <option value="обычное" selected>Обычное разрешение на посещение</option>
+  <option value="бессрочное">Бессрочное разрешение</option>
+  <option value="повторный">Ответ на повторный запрос</option>
+  <option value="отказ">Отказ в разрешении</option>
+</select>
               </div>
 
               <div id="permTargetWrap" class="full">
@@ -159,10 +164,10 @@
                   <input id="initLastMentor" type="text" placeholder=" ">
                 </div>
 
-                <div>
-                  <label for="initNextMentor">Новый наставник</label>
-                  <input id="initNextMentor" type="text" readonly placeholder="">
-                </div>
+             <div>
+  <label for="initNextMentor">Новый наставник</label>
+  <select id="initNextMentor"></select>
+</div>
               </div>
               <p class="help">
                 Список наставников можно найти в <a href="https://docs.google.com/spreadsheets/d/1vzVBLKl2rcdjsLk2vqvJ7un3afTbRsZOHVCVCkhcEsk/edit" target="_blank" style="color: var(--accent); text-decoration: underline;">таблице</a>.
@@ -191,6 +196,31 @@
             </div>
           </div>
 
+        </div>
+
+        <div id="form-exile" class="stack form-view hidden">
+          <div class="card stack">
+            <div class="grid">
+              <div class="full">
+                <label for="exileType">Вид изгнания</label>
+                <select id="exileType">
+                  <option value="обычное" selected>Обычное изгнание</option>
+                  <option value="отработка">Изгнание с отработкой</option>
+                </select>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="primary" id="btnGenExile">Составить код изгнания</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <label for="exileResult">Результат (BB-код)</label>
+            <textarea id="exileResult" class="output" readonly></textarea>
+            <div class="actions">
+              <button class="secondary copy-btn" data-copy="exileResult">Скопировать код</button>
+            </div>
+          </div>
         </div>
 
       </section>
