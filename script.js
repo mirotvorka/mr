@@ -1,4 +1,4 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbzmAhaEpSqqN1mDQjzjExm7JUPiCoYnL-XQDAyFwgfLn61557l-weU5_jTXNFswvp89/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbxIYt1Aqi7-zUL6x918nP6Vn1-p-esx1ql4a050c99y8PKna-GtbFbdajHMStELLLqJrQ/exec"; 
 const qs = (id) => document.getElementById(id);
 
 let cachedTemplates = { 
@@ -8,6 +8,7 @@ let cachedTemplates = {
 
 let mentorsQueue = []; 
 let currentNextMentor = null; 
+let autoNextMentor = null;
 let cachedVars = {}; 
 
 function getMoscowDate() {
@@ -26,15 +27,19 @@ function addDays(dateStr, days) {
 
 function buildAndSelectNextMentor(lastMentorName) {
     const selectEl = qs('initNextMentor');
-    if (!selectEl || mentorsQueue.length === 0) return;
+    if (!selectEl) return;
 
     selectEl.innerHTML = '';
 
-    const openMentors = mentorsQueue.filter(m => m.status.toLowerCase().includes('открыт'));
+let openMentors = mentorsQueue.filter(m => m.status && m.status.toLowerCase().includes('открыт'));
+    
+    const selfStudyMentor = { name: 'Самообучение', id: 'self', vk: '', status: 'открыт', isSelfStudy: true };
+    openMentors.unshift(selfStudyMentor);
 
     if (openMentors.length === 0) {
         selectEl.innerHTML = '<option disabled>Нет открытых наставников!</option>';
         currentNextMentor = null;
+        autoNextMentor = null;
         return;
     }
 
@@ -45,9 +50,9 @@ function buildAndSelectNextMentor(lastMentorName) {
         selectEl.appendChild(option);
     });
 
-    currentNextMentor = openMentors[0]; 
+    autoNextMentor = openMentors.length > 1 ? openMentors[1] : openMentors[0];
 
-    if (lastMentorName) {
+    if (lastMentorName && openMentors.length > 1) { 
         const targetName = lastMentorName.trim().toLowerCase();
         const lastIndex = mentorsQueue.findIndex(m => m.name.toLowerCase() === targetName);
         
@@ -55,20 +60,23 @@ function buildAndSelectNextMentor(lastMentorName) {
             for (let i = 1; i <= mentorsQueue.length; i++) {
                 let checkIndex = (lastIndex + i) % mentorsQueue.length;
                 if (mentorsQueue[checkIndex].status.toLowerCase().includes('открыт')) {
-                    currentNextMentor = mentorsQueue[checkIndex];
-                    break;
+                    const found = openMentors.find(om => om.name === mentorsQueue[checkIndex].name);
+                    if (found) {
+                        autoNextMentor = found; 
+                        break;
+                    }
                 }
             }
         }
     }
     
+    currentNextMentor = autoNextMentor;
     selectEl.value = currentNextMentor.name;
 
     selectEl.addEventListener('change', (e) => {
-        currentNextMentor = mentorsQueue.find(m => m.name === e.target.value);
+        currentNextMentor = openMentors.find(m => m.name === e.target.value);
     });
 }
-
 const calc = () => {
     if (!qs('permType')) return;
     const type = qs('permType').value;
@@ -111,8 +119,8 @@ const calc = () => {
 };
 
 async function syncWithSheet() {
-const buttons = [qs('btnGenPerm'), qs('btnGenEntry'), qs('btnGenInitiation'), qs('btnGenExile')];   
- buttons.forEach(b => { if(b) { b.disabled = true; b.textContent = "Загрузка..."; }});
+    const buttons = [qs('btnGenPerm'), qs('btnGenEntry'), qs('btnGenInitiation'), qs('btnGenExile')];   
+    buttons.forEach(b => { if(b) { b.disabled = true; b.textContent = "Загрузка..."; }});
 
     try {
         const res = await fetch(API_URL);
@@ -131,7 +139,7 @@ const buttons = [qs('btnGenPerm'), qs('btnGenEntry'), qs('btnGenInitiation'), qs
 
         calc();
         
-       if (qs('btnGenPerm')) { qs('btnGenPerm').disabled = false; qs('btnGenPerm').textContent = "Составить код разрешения"; }
+        if (qs('btnGenPerm')) { qs('btnGenPerm').disabled = false; qs('btnGenPerm').textContent = "Составить код разрешения"; }
         if (qs('btnGenEntry')) { qs('btnGenEntry').disabled = false; qs('btnGenEntry').textContent = "Составить код вступления"; }
         if (qs('btnGenInitiation')) { qs('btnGenInitiation').disabled = false; qs('btnGenInitiation').textContent = "Составить код посвящения"; }
         if (qs('btnGenExile')) { qs('btnGenExile').disabled = false; qs('btnGenExile').textContent = "Составить код изгнания"; } 
@@ -146,9 +154,9 @@ document.addEventListener('DOMContentLoaded', () => {
     syncWithSheet(); 
     if (qs('permStartDate')) qs('permStartDate').value = getMoscowDate();
 
-    document.querySelectorAll('.nav-btn').forEach(btn => {
+    document.querySelectorAll('.acc-head').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.acc-head').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.form-view').forEach(f => f.classList.add('hidden'));
             btn.classList.add('active');
             const target = qs('form-' + btn.dataset.form);
@@ -170,20 +178,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const initTypeEl = qs('initType');
     const initTargetIdEl = qs('initTargetId');
     
-    if (initTypeEl && initTargetIdEl) {
-        const toggleInitFields = () => {
-            const idWrapper = initTargetIdEl.parentElement; 
-            
-            if (initTypeEl.value === 'topotushka') {
-                idWrapper.classList.add('hidden'); 
-            } else {
-                idWrapper.classList.remove('hidden'); 
-            }
-        };
+if (initTypeEl && initTargetIdEl) {
+    const toggleInitFields = () => {
+        const pirateNameEl = qs('initPirateName');
+        const pirateWrapper = pirateNameEl ? pirateNameEl.parentElement : null;
         
-        initTypeEl.addEventListener('change', toggleInitFields);
-        toggleInitFields(); 
-    }
+        const idWrapper = initTargetIdEl.parentElement;
+
+        if (initTypeEl.value === 'topotushka') {
+            if (pirateWrapper) pirateWrapper.classList.add('hidden');
+            
+        } else {
+            if (idWrapper) idWrapper.classList.remove('hidden');
+            if (pirateWrapper) pirateWrapper.classList.remove('hidden');
+        }
+    };
+    
+    initTypeEl.addEventListener('change', toggleInitFields);
+    toggleInitFields(); 
+}
 
     if (qs('btnGenPerm')) {
         qs('btnGenPerm').addEventListener('click', () => {
@@ -197,23 +210,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const fac = qs('permFactionType') ? qs('permFactionType').value : 'official';
             const guarID = qs('permGuarantorId') ? qs('permGuarantorId').value.trim() : '';
+            const targetId = qs('permTargetId').value.trim() || 'ID';
             
             let isForcedRefusal = (type === 'обычное' && fac === 'loner' && !guarID);
-            let tpl = (type === 'отказ' || isForcedRefusal) ? cachedTemplates.refusal : (type === 'бессрочное' ? cachedTemplates.endless : cachedTemplates.normal);
+            
+            let tpl = (type === 'отказ' || isForcedRefusal) ? cachedTemplates.refusal : cachedTemplates.normal;
             
             if (!tpl) return alert("Шаблон не загружен!");
 
-            const guarantorPart = guarID ? `[br]Поручителем выступил игрок [b][cat${guarID}] [${guarID}].[/b] За все ваши действия этот игрок несёт ответственность.` : "";
+            const guarantorPart = guarID ? `[br]Поручителем выступил игрок [b][cat${guarID}] [${guarID}].[/b] За все ваши действия этот игрок несёт ответственность.[br]` : "";
+            
             const textRefusal = isForcedRefusal 
                 ? "К сожалению, вынуждены отказать вам в получении разрешения на посещение территории шайки Разбитого Корабля.[br]На данный момент мы предоставляем разрешение одиночкам вне Церковной Территории только при наличии поручителя. Вы можете повторно запросить собеседование [b]при смене фракции или получении рекомендации от игрока из шайки[/b]." 
                 : "На данный момент мы не можем предоставить вам разрешение на посещение территории.";
 
+            let termText = "";
+            if (type === 'бессрочное') {
+                termText = `[center][b][cat${targetId}] [${targetId}]; бессрочное[/b][/center][br]`;
+            } else if (type === 'обычное') {
+                termText = `[center][b][cat${targetId}] [${targetId}]: ${qs('permStartDate').value} — ${qs('permEndDate').value}[/b][/center][br]Столько будет действовать ваше разрешение на проход по территории шайки Разбитого Корабля. После его окончания запросить разрешение повторно можно [b]${qs('permReReqDate').value}.[/b] Ещё раз проходить собеседование не придётся, нужно только указать вашу актуальную фракцию.[br][br]${guarantorPart}`;
+            }
+
             const data = {
-                '{РАЗРЕШЕНЕЦ}': qs('permTargetId').value.trim() || 'ID',
-                '{НАЧАЛО}': qs('permStartDate').value,
-                '{КОНЕЦ}': (type === 'бессрочное') ? 'бессрочное' : qs('permEndDate').value,
-                '{ПЕРЕВЫДАЧА}': qs('permReReqDate').value,
-                '{ПОРУЧИТЕЛЬ}': guarantorPart,
+                '{РАЗРЕШЕНЕЦ}': targetId,
+                '{СРОК}': termText, 
                 '{ТЕКСТ_ОТКАЗА}': textRefusal,
                 '{ВЕРХОВНАЯ_СФЕРА}': cachedVars.high,
                 '{ОТКРЫВАТОРЫ}': cachedVars.gate,
@@ -238,62 +258,78 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (qs('btnGenInitiation')) {
-        qs('btnGenInitiation').addEventListener('click', () => {
-            const type = qs('initType').value;
-            const targetId = qs('initTargetId').value.trim() || 'ID';
-            
-            let res = '';
-            let report = '';
+    qs('btnGenInitiation').addEventListener('click', () => {
+        const type = qs('initType').value;
+        const targetId = qs('initTargetId').value.trim() || 'ID';
+        const pirateName = qs('initPirateName').value.trim() || 'траляля'; 
+        
+        let res = '';
+        let report = '';
 
-            if (type === 'yunga') {
-                if (!currentNextMentor) return alert("Наставник не определен!");
+        if (type === 'yunga') {
+            if (!currentNextMentor) return alert("Наставник не определен!");
+            
+            if (currentNextMentor.isSelfStudy || currentNextMentor.name === 'Самообучение') {
+                res = `Привет, готово! Поздравляю с посвящением в юнги. В течение дня глава или заместитель [b][url=blog736261]отряда Китов[/url].[/b] должны написать тебе в личные сообщения.`;
                 
+                const whalesTags = cachedVars.whales || '';
+                report = `#Наставники\n${targetId} — самообучение\n${whalesTags}`;
+            } 
+            else {
                 res = (cachedTemplates.yunga || "")
                     .split('{АЙДИ}').join(targetId)
                     .split('{НАСТАВНИК}').join(`[link${currentNextMentor.id}]`);
                 
-report = `#Наставники\n${targetId} — ${currentNextMentor.name}\n[ ${currentNextMentor.vk} ]`;
-            } 
-            else if (type === 'topotushka') {
-                res = (cachedTemplates.topotushka || "").split('{АЙДИ}').join(targetId);
-            } 
-            else {
-                res = (cachedTemplates.otherInit || "").split('{АЙДИ}').join(targetId);
+                let outOfTurnMark = "";
+                if (autoNextMentor && currentNextMentor.name !== autoNextMentor.name) {
+                    outOfTurnMark = " (!)";
+                }
+                
+                report = `#Наставники\n${targetId} — ${currentNextMentor.name}${outOfTurnMark}\n${currentNextMentor.vk} `;
             }
+        } else if (type === 'topotushka') {
+            res = (cachedTemplates.topotushka || "").split('{АЙДИ}').join(targetId);
+        } else {
+            res = (cachedTemplates.otherInit || "").split('{АЙДИ}').join(targetId);
+        }
 
-            qs('initResult').value = res;
-            if (qs('initReportResult')) qs('initReportResult').value = report;
-        });
-    }
-
-    if (qs('btnGenExile')) {
-        qs('btnGenExile').addEventListener('click', () => {
-            const type = qs('exileType').value;
-            let res = '';
+        qs('initResult').value = res;
+        
+        if (qs('initReportResult')) qs('initReportResult').value = report;
+        
+        if (qs('initPirateReportResult')) {
+            qs('initPirateReportResult').value = `#пи\n${targetId} — ${pirateName}`;
+        }
+    });
+}
+if (qs('btnGenExile')) {
+    qs('btnGenExile').addEventListener('click', () => {
+        const type = qs('exileType').value;
+        const targetId = qs('exileTargetId').value.trim() || '1234567';
+        const targetName = qs('exileTargetName').value.trim() || 'Имя';
+        
+        let res = '';
+        let report = '';
+        
+        if (type === 'обычное') {
+            res = cachedTemplates.exile || "";
+            report = ""; 
+        } else if (type === 'отработка') {
+            let tpl = cachedTemplates.training || "";
             
-            if (type === 'обычное') {
-                res = cachedTemplates.exile || "";
-            } else if (type === 'отработка') {
-                let tpl = cachedTemplates.training || "";
-                
-                const today = getMoscowDate();
-                const [d, m, y] = today.split('.').map(Number);
-                
-                const nextMonthDate = new Date(2000 + y, m, d); 
-                
-                const endDay = String(nextMonthDate.getDate()).padStart(2, '0');
-                const endMonth = String(nextMonthDate.getMonth() + 1).padStart(2, '0');
-                const endYear = String(nextMonthDate.getFullYear()).slice(-2);
-                
-                const endDate = `${endDay}.${endMonth}.${endYear}`;
-                const srok = `${today} — ${endDate}`;
-                
-                res = tpl.split('{СРОК_ИЗГНАНИЯ}').join(srok);
-            }
+            const today = getMoscowDate();
+            const endDate = addDays(today, 31); 
+            const srok = `${today} — ${endDate}`;
+            
+            res = tpl.split('{СРОК_ИЗГНАНИЯ}').join(srok);
+            
+            report = `#отработка — ${targetName} [${targetId}], ${srok}`;
+        }
 
-            qs('exileResult').value = res;
-        });
-    }
+        qs('exileResult').value = res;
+        if (qs('exileReportResult')) qs('exileReportResult').value = report;
+    });
+}
 
     document.querySelectorAll('.copy-btn').forEach(b => {
         b.addEventListener('click', () => {
@@ -312,10 +348,24 @@ if (navToggle && navCol) {
     });
 }
 
-document.querySelectorAll('.nav-btn').forEach(btn => {
+document.querySelectorAll('.acc-head').forEach(btn => {
     btn.addEventListener('click', () => {
         if (navCol.classList.contains('mobile-open')) {
             navCol.classList.remove('mobile-open');
         }
     });
 });
+
+const exileTypeEl = qs('exileType');
+if (exileTypeEl) {
+    const toggleExileFields = () => {
+        const isTraining = exileTypeEl.value === 'отработка';
+        
+        if (qs('exileTargetIdWrap')) qs('exileTargetIdWrap').classList.toggle('hidden', !isTraining);
+        if (qs('exileTargetNameWrap')) qs('exileTargetNameWrap').classList.toggle('hidden', !isTraining);
+        
+        if (qs('exileReportCard')) qs('exileReportCard').classList.toggle('hidden', !isTraining);
+    };
+    exileTypeEl.addEventListener('change', toggleExileFields);
+    toggleExileFields();
+}
