@@ -232,7 +232,7 @@ if (initTypeEl && initTargetIdEl) {
             }
 
             const data = {
-                '{РАЗРЕШЕНЕЦ}': targetId,
+                '{АЙДИ}': targetId,
                 '{СРОК}': termText, 
                 '{ТЕКСТ_ОТКАЗА}': textRefusal,
                 '{ВЕРХОВНАЯ_СФЕРА}': cachedVars.high,
