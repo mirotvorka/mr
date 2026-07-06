@@ -270,7 +270,7 @@ if (initTypeEl && initTargetIdEl) {
             if (!currentNextMentor) return alert("Наставник не определен!");
             
             if (currentNextMentor.isSelfStudy || currentNextMentor.name === 'Самообучение') {
-                res = `Привет, готово! Поздравляю с посвящением в юнги. В течение дня глава или заместитель [b][url=blog736261]отряда Китов[/url].[/b] должны написать тебе в личные сообщения.`;
+                res = `Привет, готово! Поздравляю с посвящением в юнги.`;
                 
                 const whalesTags = cachedVars.whales || '';
                 report = `#Наставники\n${targetId} — самообучение\n${whalesTags}`;
