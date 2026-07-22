@@ -61,7 +61,6 @@
                     </select>
                 </div>
 
-                <!-- Строка 1: ID Кому выдается + ID Поручителя -->
                 <div id="permTargetWrap">
                     <label for="permTargetId">ID Кому выдается</label>
                     <input id="permTargetId" type="text" placeholder="1234567">
@@ -74,12 +73,11 @@
                     </div>
                 </div>
 
-                <!-- Строка 2: Тип фракции + Дата выдачи -->
                 <div id="permFactionWrap">
                     <label for="permFactionType">Тип фракции</label>
                     <select id="permFactionType">
                         <option value="official" selected>Официальная фракция</option>
-                        <option value="autonomy ">Автономия / Полуофициальная / ЦТ</option>
+                        <option value="autonomy">Автономия / Полуофициальная / ЦТ</option>
                         <option value="loner">Одиночка вне Церковной территории</option>
                     </select>
                 </div>
@@ -106,7 +104,9 @@
                     <textarea id="entryHighSphere"></textarea>
                 </div>
             </div>
-
+    <p class="help full">
+<a href="https://docs.google.com/spreadsheets/d/1VyhS12aD5pJgRL_11GANEiNybTPhKLIbP5P-csO_Bzk/edit" target="_blank" style="color: var(--accent); text-decoration: underline;">Таблица</a> с разрешениями.
+      </p>
             <div class="actions">
                 <button class="primary" id="btnGenPerm">Составить код разрешения</button>
             </div>
