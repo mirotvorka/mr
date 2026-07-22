@@ -89,9 +89,6 @@ const calc = () => {
         });
     }
     if (type === 'обычное' && start) {
-        // official: 31 дней с поручителем / 14 без
-        // autonomy (автономия / полуофициальная / ЦТ): всегда 1 неделя (7 дней)
-        // loner (одиночка вне ЦТ): 7 дней (и только при наличии поручителя, см. errorMsg ниже)
         let days;
         if (fac === 'official') {
             days = guar ? 31 : 14;
@@ -179,7 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const idWrapper = initTargetIdEl.parentElement;
             if (initTypeEl.value === 'topotushka') {
                 if (pirateWrapper) pirateWrapper.classList.add('hidden');
-
             } else {
                 if (idWrapper) idWrapper.classList.remove('hidden');
                 if (pirateWrapper) pirateWrapper.classList.remove('hidden');
@@ -189,6 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
         initTypeEl.addEventListener('change', toggleInitFields);
         toggleInitFields();
     }
+
     if (qs('btnGenPerm')) {
         qs('btnGenPerm').addEventListener('click', () => {
             const type = qs('permType').value;
@@ -233,6 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
             qs('permResult').value = res;
         });
     }
+
     if (qs('btnGenEntry')) {
         qs('btnGenEntry').addEventListener('click', () => {
             const tpl = cachedTemplates.entry;
@@ -241,6 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
             qs('entryResult').value = res;
         });
     }
+
     if (qs('btnGenInitiation')) {
         qs('btnGenInitiation').addEventListener('click', () => {
             const type = qs('initType').value;
@@ -249,19 +248,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let res = '';
             let report = '';
+
             if (type === 'yunga') {
                 if (!currentNextMentor) return alert("Наставник не определен!");
 
                 if (currentNextMentor.isSelfStudy || currentNextMentor.name === 'Самообучение') {
                     res = `Привет, готово! Поздравляю с посвящением в юнги.`;
-
-                    // Самообучение не двигает очередь автоматически, поэтому
-                    // помечаем так же, как ручной выбор не по очереди (!) —
-                    // чтобы дежурный сверился в #наставники, кто следующий.
                     const whalesTags = cachedVars.whales || '';
                     report = `#Наставники\n${targetId} — самообучение (!)\n${whalesTags}`;
-                }
-                else {
+                } else {
                     res = (cachedTemplates.yunga || "")
                         .split('{АЙДИ}').join(targetId)
                         .split('{НАСТАВНИК}').join(`[link${currentNextMentor.id}]`);
@@ -270,7 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (autoNextMentor && currentNextMentor.name !== autoNextMentor.name) {
                         outOfTurnMark = " (!)";
                     }
-
                     report = `#Наставники\n${targetId} — ${currentNextMentor.name}${outOfTurnMark}\n${currentNextMentor.vk} `;
                 }
             } else if (type === 'topotushka') {
@@ -278,15 +272,15 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 res = (cachedTemplates.otherInit || "").split('{АЙДИ}').join(targetId);
             }
+
             qs('initResult').value = res;
-
             if (qs('initReportResult')) qs('initReportResult').value = report;
-
             if (qs('initPirateReportResult')) {
                 qs('initPirateReportResult').value = `#пи\n${targetId} — ${pirateName}`;
             }
         });
     }
+
     if (qs('btnGenExile')) {
         qs('btnGenExile').addEventListener('click', () => {
             const type = qs('exileType').value;
@@ -301,19 +295,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 report = "";
             } else if (type === 'отработка') {
                 let tpl = cachedTemplates.training || "";
-
                 const today = getMoscowDate();
                 const endDate = addDays(today, 31);
                 const srok = `${today} — ${endDate}`;
-
                 res = tpl.split('{СРОК_ИЗГНАНИЯ}').join(srok);
-
                 report = `#отработка — ${targetName} [${targetId}], ${srok}`;
             }
             qs('exileResult').value = res;
             if (qs('exileReportResult')) qs('exileReportResult').value = report;
         });
     }
+
     document.querySelectorAll('.copy-btn').forEach(b => {
         b.addEventListener('click', () => {
             const el = qs(b.dataset.copy);
@@ -321,6 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
+
 const navToggle = qs('navToggle');
 const navCol = qs('navCol');
 if (navToggle && navCol) {
@@ -335,14 +328,13 @@ document.querySelectorAll('.acc-head').forEach(btn => {
         }
     });
 });
+
 const exileTypeEl = qs('exileType');
 if (exileTypeEl) {
     const toggleExileFields = () => {
         const isTraining = exileTypeEl.value === 'отработка';
-
         if (qs('exileTargetIdWrap')) qs('exileTargetIdWrap').classList.toggle('hidden', !isTraining);
         if (qs('exileTargetNameWrap')) qs('exileTargetNameWrap').classList.toggle('hidden', !isTraining);
-
         if (qs('exileReportCard')) qs('exileReportCard').classList.toggle('hidden', !isTraining);
     };
     exileTypeEl.addEventListener('change', toggleExileFields);
